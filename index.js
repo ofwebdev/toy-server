@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 const app = express();
@@ -31,11 +31,86 @@ async function run() {
 
     const toyCollection = client.db("toyDB").collection("toy");
 
+    // GET REQUEST ALL TOY
+    app.get("/toy", async (req, res) => {
+      const cursor = toyCollection.find();
+
+      const result = await cursor.toArray();
+      res.send(result);
+      console.log(result);
+    });
+
+    // GET REQUEST ALL TOY with search query
+    app.get("/toy/search", async (req, res) => {
+      const { searchQuery } = req.query;
+
+      let cursor;
+      if (searchQuery) {
+        const regex = new RegExp(searchQuery, "i");
+        cursor = toyCollection.find({ name: regex });
+      } else {
+        cursor = toyCollection.find();
+      }
+
+      const result = await cursor
+        .project({ name: 1 }) // Include only the 'name' field in the result
+        .limit(limit)
+        .toArray();
+
+      res.send(result);
+    });
+
+    // GET REQUEST SINGLE ID
+    app.get("/toy/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+      const result = await toyCollection.findOne(query);
+
+      res.send(result);
+    });
+
+    // POST REQUEST
     app.post("/toy", async (req, res) => {
       const newToy = req.body;
       console.log(newToy);
 
       const result = await toyCollection.insertOne(newToy);
+      res.send(result);
+    });
+
+    app.put("/toy/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const toyUpdate = {
+        $set: {
+          name: req.body.name,
+          quantity: req.body.quantity,
+          description: req.body.description,
+          picture: req.body.picture,
+          sellerName: req.body.sellerName,
+          sellerEmail: req.body.sellerEmail,
+          subcategory: req.body.subcategory,
+          rating: req.body.subcategory,
+          price: req.body.price,
+        },
+      };
+
+      const result = await toyCollection.updateOne(filter, toyUpdate, options);
+
+      res.send(result);
+    });
+
+    // DELETE REQUEST
+    app.delete("/toy/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log("Please delete id from database", id);
+
+      const query = { _id: new ObjectId(id) };
+      const result = await toyCollection.deleteOne(query);
+
       res.send(result);
     });
 
